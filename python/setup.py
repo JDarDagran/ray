@@ -262,6 +262,9 @@ if setup_spec.type == SetupType.RAY:
             if sys.platform == "darwin"
             else "grpcio",
         ],
+        "lineage": [
+            "pluggy",
+        ],
         "serve": [
             "uvicorn[standard]",
             "requests",

@@ -260,6 +260,9 @@ class Checkpoint(metaclass=_CheckpointMetaClass):
 
         """
         if isinstance(self.filesystem, pyarrow.fs.LocalFileSystem):
+            import ray
+            from ray.lineage.actor import LineageManager
+            LineageManager.register_input_checkpoint(self.path, ray.get_runtime_context().get_job_id())
             yield self.path
         else:
             del_lock_path = _get_del_lock_path(self._get_temporary_checkpoint_dir())

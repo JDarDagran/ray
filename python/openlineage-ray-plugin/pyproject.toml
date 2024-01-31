@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openlineage-ray-plugin"
+version = "0.0.1"
+dependencies = [
+    "openlineage-python",
+    "pluggy",
+]
+
+[project.entry-points.ray]
+listener = "openlineage_ray_plugin.hooks.listener"
+
+[tool.hatch.build]
+exclude = [".idea", ".ruff_cache", ".gitignore"]
+targets.wheel = {packages = ["openlineage_ray_plugin"]}

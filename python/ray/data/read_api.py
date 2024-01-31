@@ -78,6 +78,7 @@ from ray.data.datasource.file_based_datasource import (
     _wrap_arrow_serialization_workaround,
 )
 from ray.data.datasource.partitioning import Partitioning
+from ray.lineage.utils import wrap_datasource_reader
 from ray.types import ObjectRef
 from ray.util.annotations import DeveloperAPI, PublicAPI
 from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
@@ -277,6 +278,7 @@ def range_tensor(n: int, *, shape: Tuple = (1,), parallelism: int = -1) -> Datas
 
 @PublicAPI
 @wrap_auto_init
+@wrap_datasource_reader
 def read_datasource(
     datasource: Datasource,
     *,

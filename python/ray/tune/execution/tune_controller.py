@@ -348,7 +348,15 @@ class TuneController:
         - the callback states
         """
         experiment_dir = self._storage.experiment_local_path
+        from ray.lineage.actor import LineageManager
 
+        LineageManager.register_output_checkpoint(
+            os.path.join(
+                self._storage.experiment_local_path,
+                self._storage.experiment_dir_name
+            ),
+            ray.get_runtime_context().get_job_id()
+        )
         # Get state from trial executor and runner
         runner_state = {
             # Trials

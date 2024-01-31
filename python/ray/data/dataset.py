@@ -213,6 +213,7 @@ class Dataset:
         self,
         plan: ExecutionPlan,
         logical_plan: Optional[LogicalPlan] = None,
+        from_dataset_uuid: Optional[str] = None,
     ):
         """Construct a Dataset (internal API).
 
@@ -232,6 +233,12 @@ class Dataset:
         self._write_ds = None
 
         self._set_uuid(StatsManager.get_dataset_id_from_stats_actor())
+        self._set_from_dataset_uuid(from_dataset_uuid)
+        from ray.lineage.actor import LineageManager
+
+        LineageManager.register_dataset_lineage(
+            self._uuid, self._from_dataset_uuid, ray.get_runtime_context().get_job_id()
+        )
 
     @staticmethod
     def copy(
@@ -240,9 +247,11 @@ class Dataset:
         if not _as:
             _as = type(ds)
         if _deep_copy:
-            return _as(ds._plan.deep_copy(), ds._logical_plan)
+            return _as(
+                ds._plan.deep_copy(), ds._logical_plan, from_dataset_uuid=ds._uuid
+            )
         else:
-            return _as(ds._plan.copy(), ds._logical_plan)
+            return _as(ds._plan.copy(), ds._logical_plan, from_dataset_uuid=ds._uuid)
 
     def map(
         self,
@@ -362,7 +371,7 @@ class Dataset:
                 ray_remote_args=ray_remote_args,
             )
             logical_plan = LogicalPlan(map_op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def _set_name(self, name: Optional[str]):
         """Set the name of the dataset.
@@ -370,6 +379,15 @@ class Dataset:
         Used as a prefix for metrics tags.
         """
         self._plan._dataset_name = name
+
+    def _set_from_dataset_uuid(self, from_dataset_uuid):
+        """Set UUID(s) of dataset(s) this dataset was created from.
+
+        Used for lineage purpose.
+        """
+        if isinstance(from_dataset_uuid, str):
+            from_dataset_uuid = [from_dataset_uuid]
+        self._from_dataset_uuid = from_dataset_uuid
 
     @property
     def _name(self) -> Optional[str]:
@@ -606,7 +624,7 @@ class Dataset:
             )
             logical_plan = LogicalPlan(map_batches_op)
 
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def add_column(
         self,
@@ -911,7 +929,7 @@ class Dataset:
                 ray_remote_args=ray_remote_args,
             )
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def filter(
         self,
@@ -971,7 +989,7 @@ class Dataset:
             )
             logical_plan = LogicalPlan(op)
 
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @AllToAllAPI
     def repartition(
@@ -1031,7 +1049,7 @@ class Dataset:
                 shuffle=shuffle,
             )
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @AllToAllAPI
     def random_shuffle(
@@ -1084,7 +1102,7 @@ class Dataset:
                 ray_remote_args=ray_remote_args,
             )
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @AllToAllAPI
     def randomize_block_order(
@@ -1123,7 +1141,7 @@ class Dataset:
                 seed=seed,
             )
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def random_sample(
         self, fraction: float, *, seed: Optional[int] = None
@@ -1379,6 +1397,7 @@ class Dataset:
                             run_by_consumer=owned_by_consumer,
                         ),
                         logical_plan,
+                        from_dataset_uuid=self._uuid,
                     )
                 )
             return split_datasets
@@ -1588,6 +1607,7 @@ class Dataset:
                         run_by_consumer=block_list._owned_by_consumer,
                     ),
                     logical_plan,
+                    from_dataset_uuid=self._uuid,
                 )
             )
         return splits
@@ -1839,6 +1859,7 @@ class Dataset:
         return Dataset(
             ExecutionPlan(blocklist, stats, run_by_consumer=owned_by_consumer),
             logical_plan,
+            from_dataset_uuid=[d._uuid for d in datasets],
         )
 
     @AllToAllAPI
@@ -2268,7 +2289,7 @@ class Dataset:
                 sort_key=sort_key,
             )
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def zip(self, other: "Dataset") -> "Dataset":
         """Materialize and zip the columns of this dataset with the columns of another.
@@ -2309,7 +2330,7 @@ class Dataset:
         if logical_plan is not None and other_logical_plan is not None:
             op = Zip(logical_plan.dag, other_logical_plan.dag)
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def limit(self, limit: int) -> "Dataset":
         """Truncate the dataset to the first ``limit`` rows.
@@ -2337,7 +2358,7 @@ class Dataset:
         if logical_plan is not None:
             op = Limit(logical_plan.dag, limit=limit)
             logical_plan = LogicalPlan(op)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @ConsumptionAPI
     def take_batch(

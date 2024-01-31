@@ -30,6 +30,9 @@ if __name__ == "__main__":
             failure_config=train.FailureConfig(
                 fail_fast=True,
             ),
+            checkpoint_config=train.CheckpointConfig(
+                num_to_keep=5,
+            ),
         ),
         tune_config=tune.TuneConfig(
             num_samples=20 if args.smoke_test else 200,

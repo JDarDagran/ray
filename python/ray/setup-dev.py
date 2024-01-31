@@ -113,6 +113,7 @@ if __name__ == "__main__":
     do_link("scripts", force=args.yes, skip_list=args.skip)
     do_link("internal", force=args.yes, skip_list=args.skip)
     do_link("tests", force=args.yes, skip_list=args.skip)
+    do_link("lineage", force=args.yes, skip_list=args.skip)
     do_link("experimental", force=args.yes, skip_list=args.skip)
     do_link("util", force=args.yes, skip_list=args.skip)
     do_link("workflow", force=args.yes, skip_list=args.skip)
