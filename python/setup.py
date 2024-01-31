@@ -271,6 +271,9 @@ if setup_spec.type == SetupType.RAY:
             "opentelemetry-sdk",
             "opentelemetry-exporter-otlp",
         ],
+        "lineage": [
+            "pluggy",
+        ],
         "serve": [
             "uvicorn[standard]",
             "requests",

@@ -217,6 +217,7 @@ class Dataset:
         self,
         plan: ExecutionPlan,
         logical_plan: LogicalPlan,
+        from_dataset_uuid: Optional[str] = None,
     ):
         """Construct a Dataset (internal API).
 
@@ -235,6 +236,12 @@ class Dataset:
         self._write_ds = None
 
         self._set_uuid(StatsManager.get_dataset_id_from_stats_actor())
+        self._set_from_dataset_uuid(from_dataset_uuid)
+        from ray.lineage.actor import LineageManager
+
+        LineageManager.register_dataset_lineage(
+            self._uuid, self._from_dataset_uuid, ray.get_runtime_context().get_job_id()
+        )
 
     @staticmethod
     def copy(
@@ -243,9 +250,11 @@ class Dataset:
         if not _as:
             _as = type(ds)
         if _deep_copy:
-            return _as(ds._plan.deep_copy(), ds._logical_plan)
+            return _as(
+                ds._plan.deep_copy(), ds._logical_plan, from_dataset_uuid=ds._uuid
+            )
         else:
-            return _as(ds._plan.copy(), ds._logical_plan)
+            return _as(ds._plan.copy(), ds._logical_plan, from_dataset_uuid=ds._uuid)
 
     @PublicAPI(api_group=BT_API_GROUP)
     def map(
@@ -378,7 +387,7 @@ class Dataset:
             ray_remote_args=ray_remote_args,
         )
         logical_plan = LogicalPlan(map_op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     def _set_name(self, name: Optional[str]):
         """Set the name of the dataset.
@@ -386,6 +395,15 @@ class Dataset:
         Used as a prefix for metrics tags.
         """
         self._plan._dataset_name = name
+
+    def _set_from_dataset_uuid(self, from_dataset_uuid):
+        """Set UUID(s) of dataset(s) this dataset was created from.
+
+        Used for lineage purpose.
+        """
+        if isinstance(from_dataset_uuid, str):
+            from_dataset_uuid = [from_dataset_uuid]
+        self._from_dataset_uuid = from_dataset_uuid
 
     @property
     def _name(self) -> Optional[str]:
@@ -697,7 +715,7 @@ class Dataset:
             ray_remote_args=ray_remote_args,
         )
         logical_plan = LogicalPlan(map_batches_op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @PublicAPI(api_group=BT_API_GROUP)
     def add_column(
@@ -1174,7 +1192,7 @@ class Dataset:
             ray_remote_args=ray_remote_args,
         )
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @PublicAPI(api_group=BT_API_GROUP)
     def filter(
@@ -1274,7 +1292,7 @@ class Dataset:
             ray_remote_args=ray_remote_args,
         )
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @AllToAllAPI
     @PublicAPI(api_group=SSR_API_GROUP)
@@ -1332,7 +1350,7 @@ class Dataset:
             shuffle=shuffle,
         )
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @AllToAllAPI
     @PublicAPI(api_group=SSR_API_GROUP)
@@ -1382,7 +1400,7 @@ class Dataset:
             ray_remote_args=ray_remote_args,
         )
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @AllToAllAPI
     @PublicAPI(api_group=SSR_API_GROUP)
@@ -1419,7 +1437,7 @@ class Dataset:
             seed=seed,
         )
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @PublicAPI(api_group=BT_API_GROUP)
     def random_sample(
@@ -1672,6 +1690,7 @@ class Dataset:
                     MaterializedDataset(
                         ExecutionPlan(stats),
                         logical_plan,
+                        from_dataset_uuid=self._uuid,
                     )
                 )
             return split_datasets
@@ -1865,6 +1884,7 @@ class Dataset:
                 MaterializedDataset(
                     ExecutionPlan(stats),
                     logical_plan,
+                    from_dataset_uuid=self._uuid,
                 )
             )
         return splits
@@ -2057,6 +2077,7 @@ class Dataset:
         return Dataset(
             ExecutionPlan(stats),
             logical_plan,
+            from_dataset_uuid=[d._uuid for d in datasets],
         )
 
     @AllToAllAPI
@@ -2502,7 +2523,7 @@ class Dataset:
             sort_key=sort_key,
         )
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @PublicAPI(api_group=SMD_API_GROUP)
     def zip(self, other: "Dataset") -> "Dataset":
@@ -2538,7 +2559,7 @@ class Dataset:
         plan = self._plan.copy()
         op = Zip(self._logical_plan.dag, other._logical_plan.dag)
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @PublicAPI(api_group=BT_API_GROUP)
     def limit(self, limit: int) -> "Dataset":
@@ -2565,7 +2586,7 @@ class Dataset:
         plan = self._plan.copy()
         op = Limit(self._logical_plan.dag, limit=limit)
         logical_plan = LogicalPlan(op, self.context)
-        return Dataset(plan, logical_plan)
+        return Dataset(plan, logical_plan, from_dataset_uuid=self._uuid)
 
     @ConsumptionAPI
     @PublicAPI(api_group=CD_API_GROUP)

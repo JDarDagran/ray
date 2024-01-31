@@ -83,7 +83,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_trainable(
-    run_identifier: Union[Experiment, str, Type, Callable]
+    run_identifier: Union[Experiment, str, Type, Callable],
 ) -> Optional[Type[Trainable]]:
     if isinstance(run_identifier, Experiment):
         run_identifier = run_identifier.run_identifier
@@ -147,7 +147,7 @@ def _build_resume_config_from_legacy_config(
 
 
 def _check_default_resources_override(
-    run_identifier: Union[Experiment, str, Type, Callable]
+    run_identifier: Union[Experiment, str, Type, Callable],
 ) -> bool:
     trainable_cls = _get_trainable(run_identifier)
     if not trainable_cls:
@@ -172,7 +172,7 @@ def _check_mixin(run_identifier: Union[Experiment, str, Type, Callable]) -> bool
 
 
 def _check_gpus_in_resources(
-    resources: Optional[Union[Dict, PlacementGroupFactory]]
+    resources: Optional[Union[Dict, PlacementGroupFactory]],
 ) -> bool:
     if not resources:
         return False
@@ -778,6 +778,13 @@ def run(
     if fail_fast and max_failures != 0:
         raise ValueError("max_failures must be 0 if fail_fast=True.")
 
+    from ray.lineage.actor import LineageManager
+
+    _run_id = LineageManager.register_run(
+        name=name or experiments[0].spec["run"],
+        job_uuid=ray.get_runtime_context().get_job_id(),
+    )
+
     if isinstance(search_alg, str):
         search_alg = create_searcher(search_alg)
 
@@ -1057,6 +1064,8 @@ def run(
                 f"Experiment has been interrupted, but the most recent state was "
                 f"saved.\nResume experiment with: {restore_entrypoint}"
             )
+
+    LineageManager.complete_run(_run_id, ray.get_runtime_context().get_job_id())
 
     return ExperimentAnalysis(
         experiment_checkpoint_path=runner.experiment_path,

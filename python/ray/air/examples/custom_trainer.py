@@ -8,6 +8,9 @@ import torch
 
 from ray import train
 from ray.train.trainer import BaseTrainer
+import tempfile
+import json
+import os
 
 
 class MyPytorchTrainer(BaseTrainer):
@@ -41,9 +44,13 @@ class MyPytorchTrainer(BaseTrainer):
                 num_batches += 1
             loss /= num_batches
 
-            # Use Tune functions to report intermediate
-            # results.
-            train.report({"loss": loss, "epoch": epoch_idx})
+            with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
+                with open(os.path.join(temp_checkpoint_dir, "checkpoint.json"), "w") as f:
+                    json.dump({"epoch_idx": epoch_idx}, f)
+
+                # Use Tune functions to report intermediate
+                # results.
+                train.report({"loss": loss, "epoch": epoch_idx}, checkpoint=train.Checkpoint.from_directory(temp_checkpoint_dir))
 
 
 # __custom_trainer_end__

@@ -83,6 +83,7 @@ from ray.data.datasource.file_meta_provider import (
 )
 from ray.data.datasource.parquet_meta_provider import ParquetMetadataProvider
 from ray.data.datasource.partitioning import Partitioning
+from ray.lineage.utils import wrap_datasource_reader
 from ray.types import ObjectRef
 from ray.util.annotations import Deprecated, DeveloperAPI, PublicAPI
 from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
@@ -332,6 +333,7 @@ def range_tensor(
 
 @PublicAPI
 @wrap_auto_init
+@wrap_datasource_reader
 def read_datasource(
     datasource: Datasource,
     *,

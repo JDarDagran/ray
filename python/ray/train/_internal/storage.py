@@ -529,7 +529,11 @@ class StorageContext:
             Checkpoint: A Checkpoint pointing to the persisted checkpoint location.
         """
         # TODO(justinvyu): Fix this cyclical import.
+        from ray.lineage.actor import LineageManager
         from ray.train._checkpoint import Checkpoint
+        import ray
+
+        LineageManager.register_output_checkpoint(str(self.experiment_fs_path), ray.get_runtime_context().get_job_id())
 
         logger.debug(
             "Copying checkpoint files to storage path:\n"
