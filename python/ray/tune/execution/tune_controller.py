@@ -327,12 +327,12 @@ class TuneController:
         - the searcher state
         - the callback states
         """
-        experiment_dir = self._storage.experiment_local_path
+        # experiment_dir = self._storage.experiment_local_path
         from ray.lineage.actor import LineageManager
 
         LineageManager.register_output_checkpoint(
             os.path.join(
-                self._storage.experiment_local_path,
+                self._storage.experiment_driver_staging_path,
                 self._storage.experiment_dir_name
             ),
             ray.get_runtime_context().get_job_id()

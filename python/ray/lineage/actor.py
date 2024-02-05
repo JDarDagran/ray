@@ -4,13 +4,13 @@ from enum import Enum
 from uuid import uuid4
 
 import ray
-from ray.data._internal.dataset_logger import DatasetLogger
+import logging
 from ray.data.context import DataContext
 from ray.lineage.listener import get_listener_manager
 from ray.lineage.spec import Checkpoint, Dataset, Lineage
 from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
 
-logger = DatasetLogger(__name__)
+logger = logging.getLogger(__name__)
 
 LINEAGE_ACTOR_NAME = "lineage_actor"
 LINEAGE_ACTOR_NAMESPACE = "_lineage_actor"
@@ -159,12 +159,6 @@ class _LineageManager:
             self._lineage_actor_handle is None
             or self._lineage_actor_cluster_id != current_cluster_id
         ):
-            # if create_if_not_exists:
-            #     print("PRZED TWORZENIEM AKTORA", self._lineage_actor_cluster_id, current_cluster_id, self._lineage_actor_handle)
-            #     print("PRZED PRZED", get_listener_manager().pm.get_plugins())
-            #     self._lineage_actor_handle = _get_or_create_lineage_actor()
-            #     print("TWORZE AKTORA", self._lineage_actor_handle)
-            # else:
             try:
                 self._lineage_actor_handle = ray.get_actor(
                     name=LINEAGE_ACTOR_NAME, namespace=LINEAGE_ACTOR_NAMESPACE
